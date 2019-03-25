@@ -462,6 +462,7 @@ const CanvasMap=(props)=>{
 
       let drawImagePointer=(image)=>{
         let scroll=getScroll()
+        console.log(scroll)
 
         let imageMapPos=Path.getPointAtPercent(
           this.trailSubdivisions,
@@ -488,6 +489,7 @@ const CanvasMap=(props)=>{
           x:origin[0],
           y:origin[1]
         }
+        console.log(origin)
 
         let transformCoords=(x,y)=>[x,y]
         let drawTriangle=(corner1,corner2)=>{
