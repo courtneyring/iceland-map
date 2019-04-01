@@ -10,10 +10,8 @@ export function getLength(path){
 }
 export function getPointAtPercent(path,percent){
   if(Array.isArray(path))
-    console.log(path[Math.round(clamp(percent)*(path.length-1))])
     return path[Math.round(clamp(percent)*(path.length-1))]
 
-  console.log(getPointAtLength(path,percent*getLength(path)))
   return getPointAtLength(path,percent*getLength(path))
 }
 function distance(pointA,pointB){

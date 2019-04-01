@@ -59,7 +59,16 @@
 	  mapSrc: 'img/map.svg',
 	  trailVisitedColor: '#47DBB4',
 	  fontPresentColor: '#5D5C56'
+	  //  customTrailBreakpoints: [0, 105.64223889882096, 546.7796937513688, 1211.071944089788, 2551.276367284281, 3886.04150390625],
+	  //  customCameraBreakpoints: [0, 105.64223889882096, 591.8221759902315, 1129.5459605073443, 2678.0831357521492, 4075.9736328125],
 	}).appendTo('.container');
+
+	//(6) [0, 105.64223889882096, 546.7796937513688, 2086.207648350397, 2551.276367284281, 3886.04150390625]
+	//app.js:9604 (6) [0, 569.5899356307999, 591.8221759902315, 2198.7052034639555, 2678.0831357521492, 4075.9736328125]
+
+
+	//  customTrailBreakpoints: [0, 1129.5459605073443, 2088.0357862742258, 2550.736938986589, 536.9972723599138, 3893.230224609375],
+	//  customCameraBreakpoints: [0, 1211.071944089788, 2201.120977886488, 2675.6278455010774, 4083.85302734375, 4083.85302734375],
 
 /***/ }),
 /* 1 */
@@ -9492,6 +9501,9 @@
 	        textContainer: null,
 	        mapSrc: null,
 
+	        customCameraBreakpoints: null,
+	        customTrailBreakpoints: null,
+
 	        trailColor: null,
 	        trailWidth: null,
 	        trailDash: [2, 4],
@@ -9530,7 +9542,6 @@
 	        width: width,
 	        height: height
 	      };
-
 	      this.canvas = (0, _createCanvas2.default)(width, height);
 	      this.canvas.style.position = 'absolute';
 	      this.canvas.style.top = 0;
@@ -9559,15 +9570,27 @@
 
 	        _this.cameraPath = _this.mapSVG.querySelector('#camera-path path');
 	        _this.trailPath = _this.mapSVG.querySelector('#trail-path path');
-
-	        _this.points = Array.from(_this.mapSVG.querySelectorAll('#points circle')).map(function (point) {
+	        _this.points = Array.from(_this.mapSVG.querySelectorAll('#points circle')).map(function (point, idx, arr) {
 	          var _ref = [parseFloat(point.getAttribute('cx')), parseFloat(point.getAttribute('cy'))],
 	              x = _ref[0],
 	              y = _ref[1];
 
+	          var length = void 0;
+	          if (_this.props.customTrailBreakpoints != null) {
+	            length = _this.props.customTrailBreakpoints[idx];
+	          }
+	          //            else if (idx==0){
+	          //                length = 0
+	          //            }
+	          else if (idx == arr.length - 1) {
+	              length = _this.trailPath.getTotalLength();
+	            } else {
+	              length = Path.getLengthAtPoint(_this.trailPath, { x: x, y: y }, 50, 30);
+	            }
+	          console.log(length);
 	          return {
 	            x: x, y: y,
-	            length: Path.getLengthAtPoint(_this.trailPath, { x: x, y: y }),
+	            length: length,
 	            label: (point.getAttribute('id') || '').replace(/_/g, ' '),
 	            color: point.getAttribute('fill') || 'black',
 	            radius: parseFloat(point.getAttribute('r'))
@@ -9579,11 +9602,12 @@
 	        _this.cameraSubdivisions = Path.subdividePath(_this.cameraPath, _this.cameraSubdivisionSize, true);
 
 	        _this.cameraLength = Path.getLength(_this.cameraPath);
-	        _this.cameraBreakpoints = _this.setupBreakpoints(_this.cameraPath);
-
+	        _this.cameraBreakpoints = _this.setupBreakpoints(_this.cameraPath, 'camera');
+	        console.log(_this.cameraBreakpoints);
 	        _this.trailSubdivisions = Path.subdividePath(_this.trailPath, _this.trailSubdivisionSize, true);
-	        _this.trailBreakpoints = _this.setupBreakpoints(_this.trailPath);
+	        _this.trailBreakpoints = _this.setupBreakpoints(_this.trailPath, 'trail');
 	        _this.trailLength = Path.getLength(_this.trailPath);
+	        console.log(_this.trailBreakpoints);
 
 	        (0, _imageLoader.loadImage)(_this.props.mapSrc).then(function (img) {
 	          _this.mapWidth = img.width;
@@ -9619,11 +9643,24 @@
 	      });
 	      window.addEventListener('resize', this.onResize.bind(this));
 	    },
-	    setupBreakpoints: function setupBreakpoints(path) {
+	    setupBreakpoints: function setupBreakpoints(path, type) {
 	      var _this2 = this;
 
-	      return this.points.map(function (point) {
-	        return Path.getLengthAtPoint(path, point);
+	      return this.points.map(function (point, idx, arr) {
+	        if (_this2.props.customCameraBreakpoints != null && type == 'camera') {
+	          console.log(_this2.props.customCameraBreakpoints[idx]);
+	          return _this2.props.customCameraBreakpoints[idx];
+	        } else if (_this2.props.customTrailBreakpoints != null && type == 'trail') {
+	          return _this2.props.customTrailBreakpoints[idx];
+	        }
+	        //        else if (idx == 0){
+	        //            return 0
+	        //        }
+	        else if (idx == arr.length - 1) {
+	            return path.getTotalLength();
+	          } else {
+	            return Path.getLengthAtPoint(path, point, 50, 30);
+	          }
 	      }).map(function (point, i) {
 	        return _this2.sections[i].getAttribute('data-stay') == 'true' ? [point, point] : [point];
 	      }).reduce(function (flattened, cur) {

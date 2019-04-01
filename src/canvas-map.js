@@ -119,6 +119,9 @@ const CanvasMap=(props)=>{
         textContainer:null,
         mapSrc:null,
 
+        customCameraBreakpoints:null,
+        customTrailBreakpoints:null,
+          
         trailColor:null,
         trailWidth:null,
         trailDash:[2,4],
@@ -156,7 +159,6 @@ const CanvasMap=(props)=>{
         width,
         height,
       }
-
       this.canvas=createCanvas(width,height)
       this.canvas.style.position='absolute'
       this.canvas.style.top=0
@@ -190,16 +192,29 @@ const CanvasMap=(props)=>{
 
         this.cameraPath=this.mapSVG.querySelector('#camera-path path')
         this.trailPath=this.mapSVG.querySelector('#trail-path path')
-
         this.points=Array.from(this.mapSVG.querySelectorAll('#points circle'))
-          .map(point=>{
+          .map((point,idx, arr)=>{
             let [x,y]=[
               parseFloat(point.getAttribute('cx')),
               parseFloat(point.getAttribute('cy'))
             ]
+            let length
+            if(this.props.customTrailBreakpoints != null){
+                length=this.props.customTrailBreakpoints[idx]
+            }
+//            else if (idx==0){
+//                length = 0
+//            }
+            else if(idx==arr.length-1){
+                length = this.trailPath.getTotalLength()
+            }
+            else {
+                length = Path.getLengthAtPoint(this.trailPath,{x,y}, 50, 30)
+            }
+            console.log(length)
             return {
               x,y,
-              length:Path.getLengthAtPoint(this.trailPath,{x,y}),
+              length:length,
               label:(point.getAttribute('id') || '').replace(/_/g,' '),
               color:point.getAttribute('fill') || 'black',
               radius:parseFloat(point.getAttribute('r'))
@@ -210,11 +225,12 @@ const CanvasMap=(props)=>{
         this.cameraSubdivisions=Path.subdividePath(this.cameraPath,this.cameraSubdivisionSize,true)
         
         this.cameraLength=Path.getLength(this.cameraPath)
-        this.cameraBreakpoints=this.setupBreakpoints(this.cameraPath)
-
+        this.cameraBreakpoints=this.setupBreakpoints(this.cameraPath, 'camera')
+        console.log(this.cameraBreakpoints)
         this.trailSubdivisions=Path.subdividePath(this.trailPath,this.trailSubdivisionSize,true)
-        this.trailBreakpoints=this.setupBreakpoints(this.trailPath)
+        this.trailBreakpoints=this.setupBreakpoints(this.trailPath, 'trail')
         this.trailLength=Path.getLength(this.trailPath)
+        console.log(this.trailBreakpoints)
 
         loadImage(this.props.mapSrc).then((img)=>{
           this.mapWidth=img.width
@@ -250,9 +266,25 @@ const CanvasMap=(props)=>{
       })
       window.addEventListener('resize',this.onResize.bind(this))
     },
-    setupBreakpoints(path){
-      return this.points.map(point=>Path.getLengthAtPoint(path, point))
-        .map((point,i)=>
+    setupBreakpoints(path, type){
+      return this.points.map((point,idx,arr)=>{
+        if(this.props.customCameraBreakpoints != null && type == 'camera'){
+            console.log(this.props.customCameraBreakpoints[idx])
+            return this.props.customCameraBreakpoints[idx]
+        }
+        else if(this.props.customTrailBreakpoints != null && type == 'trail'){
+            return this.props.customTrailBreakpoints[idx]
+        }
+//        else if (idx == 0){
+//            return 0
+//        }
+        else if(idx == arr.length-1){
+            return path.getTotalLength();
+        }
+        else {
+            return Path.getLengthAtPoint(path, point, 50, 30);
+        }
+      }).map((point,i)=>
           this.sections[i].getAttribute('data-stay')=='true'?[point,point]:[point]
         )
         .reduce((flattened,cur)=>flattened.concat(cur),[])
@@ -462,7 +494,6 @@ const CanvasMap=(props)=>{
 
       let drawImagePointer=(image)=>{
         let scroll=getScroll()
-        console.log(scroll)
 
         let imageMapPos=Path.getPointAtPercent(
           this.trailSubdivisions,
@@ -489,7 +520,6 @@ const CanvasMap=(props)=>{
           x:origin[0],
           y:origin[1]
         }
-        console.log(origin)
 
         let transformCoords=(x,y)=>[x,y]
         let drawTriangle=(corner1,corner2)=>{
